@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>colorblend</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1rem; }
+    canvas { border: 1px solid #ccc; image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <h1>叠色</h1>
+  <p>两块色：红半透明盖蓝。修前交界会多涂一截。</p>
+  <canvas id="c" width="160" height="80"></canvas>
+  <script type="module">
+    import { drawDemo } from "./blend.js";
+    drawDemo(document.getElementById("c").getContext("2d"), 1);
+  </script>
+</body>
+</html>

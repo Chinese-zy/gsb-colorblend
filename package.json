@@ -1,0 +1,6 @@
+{
+  "name": "colorblend",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test/blend.test.js" }
+}
