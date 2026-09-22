@@ -6,15 +6,38 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 1rem; }
     canvas { border: 1px solid #ccc; image-rendering: pixelated; }
+    .grid { display: flex; gap: 1rem; flex-wrap: wrap; }
+    figure { margin: 0; }
+    figcaption { margin-bottom: 0.25rem; }
   </style>
 </head>
 <body>
   <h1>叠色</h1>
-  <p>两块色：红半透明盖蓝。修前交界会多涂一截。</p>
-  <canvas id="c" width="160" height="80"></canvas>
+  <p>两块色：红半透明盖蓝。修前交界多涂一截、放到 3x 更宽；修后两块贴住，放大宽度不变。</p>
+  <div class="grid">
+    <figure>
+      <figcaption>修前 1x</figcaption>
+      <canvas id="before1" width="240" height="240"></canvas>
+    </figure>
+    <figure>
+      <figcaption>修前 3x（多涂的那截变宽）</figcaption>
+      <canvas id="before3" width="240" height="240"></canvas>
+    </figure>
+    <figure>
+      <figcaption>修后 1x</figcaption>
+      <canvas id="after1" width="240" height="240"></canvas>
+    </figure>
+    <figure>
+      <figcaption>修后 3x（还是那么宽）</figcaption>
+      <canvas id="after3" width="240" height="240"></canvas>
+    </figure>
+  </div>
   <script type="module">
-    import { drawDemo } from "./blend.js";
-    drawDemo(document.getElementById("c").getContext("2d"), 1);
+    import { coverBlend, coverBlendBuggy, drawDemo } from "./blend.js";
+    drawDemo(document.getElementById("before1").getContext("2d"), 1, coverBlendBuggy);
+    drawDemo(document.getElementById("before3").getContext("2d"), 3, coverBlendBuggy);
+    drawDemo(document.getElementById("after1").getContext("2d"), 1, coverBlend);
+    drawDemo(document.getElementById("after3").getContext("2d"), 3, coverBlend);
   </script>
 </body>
 </html>
