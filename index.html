@@ -5,16 +5,125 @@
   <title>colorblend</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 1rem; }
-    canvas { border: 1px solid #ccc; image-rendering: pixelated; }
+    canvas { border: 1px solid #ccc; image-rendering: pixelated; display: block; }
+    .row { display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
+    .panel { margin: 0.5rem 0 1.5rem; }
+    .panel h3 { margin: 0 0 0.25rem; font-size: 1rem; }
+    .panel p { margin: 0.15rem 0; font-size: 0.85rem; color: #444; }
+    .readout { font-family: ui-monospace, monospace; }
+    .bad { color: #b00; }
+    .ok { color: #060; }
+    button { margin-right: 0.35rem; }
   </style>
 </head>
 <body>
   <h1>叠色</h1>
-  <p>两块色：红半透明盖蓝。修前交界会多涂一截。</p>
-  <canvas id="c" width="160" height="80"></canvas>
+  <p>放大倍数:
+    <button data-scale="1">1x</button>
+    <button data-scale="2">2x</button>
+    <button data-scale="3" id="defaultScale">3x</button>
+    <button data-scale="4">4x</button>
+    <span id="scaleLabel"></span>
+  </p>
+
+  <h2>交界: 只能贴住, 不能向外扩</h2>
+  <div class="row">
+    <div class="panel">
+      <h3 class="bad">修前</h3>
+      <canvas id="borderBad"></canvas>
+      <p class="readout" id="borderBadText"></p>
+    </div>
+    <div class="panel">
+      <h3 class="ok">修后</h3>
+      <canvas id="borderGood"></canvas>
+      <p class="readout" id="borderGoodText"></p>
+    </div>
+  </div>
+
+  <h2>叠色: 半透明不发灰, 全透明不擦底</h2>
+  <div class="row">
+    <div class="panel">
+      <h3 class="bad">修前</h3>
+      <canvas id="stackBad"></canvas>
+      <p class="readout" id="stackBadText"></p>
+    </div>
+    <div class="panel">
+      <h3 class="ok">修后</h3>
+      <canvas id="stackGood"></canvas>
+      <p class="readout" id="stackGoodText"></p>
+    </div>
+  </div>
+
   <script type="module">
-    import { drawDemo } from "./blend.js";
-    drawDemo(document.getElementById("c").getContext("2d"), 1);
+    import { coverBlend, legacyCoverBlend, borderScene, stackScene } from "./blend.js";
+
+    const W = 8;
+    let scale = 3;
+
+    function countRed(buf) {
+      let n = 0;
+      for (let i = 0; i < buf.length; i += 4) {
+        if (buf[i] > 200 && buf[i + 2] < 50) n++;
+      }
+      return n;
+    }
+
+    function paint(canvasId, buf) {
+      const cell = 8 * scale;
+      const canvas = document.getElementById(canvasId);
+      canvas.width = W * cell;
+      canvas.height = W * cell;
+      const ctx = canvas.getContext("2d");
+      const off = document.createElement("canvas");
+      off.width = W; off.height = W;
+      off.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(buf), W, W), 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(off, 0, 0, W, W, 0, 0, canvas.width, canvas.height);
+      // 网格标出每个源像素格子: 多涂出来的宽度是否随放大变宽, 一目了然。
+      ctx.strokeStyle = "rgba(0,0,0,0.25)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < W; i++) {
+        ctx.beginPath(); ctx.moveTo(i * cell + 0.5, 0); ctx.lineTo(i * cell + 0.5, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * cell + 0.5); ctx.lineTo(canvas.width, i * cell + 0.5); ctx.stroke();
+      }
+      return ctx;
+    }
+
+    function render() {
+      document.getElementById("scaleLabel").textContent = `当前 ${scale}x`;
+
+      const bb = borderScene(legacyCoverBlend, scale);
+      const bg = borderScene(coverBlend, scale);
+      paint("borderBad", bb);
+      paint("borderGood", bg);
+      document.getElementById("borderBadText").textContent =
+        `红像素 ${countRed(bb)} 个 (应为 4, 多出来的就是向外扩的一截)`;
+      document.getElementById("borderGoodText").textContent =
+        `红像素 ${countRed(bg)} 个 (恒为 4, 两块正好贴住, 放大不变宽)`;
+
+      const sb = stackScene(legacyCoverBlend, scale);
+      const sg = stackScene(coverBlend, scale);
+      paint("stackBad", sb);
+      paint("stackGood", sg);
+      const px = (x, y) => ((y * W + x) * 4);
+      const b1 = sb.slice(px(1, 0), px(1, 0) + 4);
+      const g1 = sg.slice(px(1, 0), px(1, 0) + 4);
+      const b2 = sb.slice(px(6, 0), px(6, 0) + 4);
+      const g2 = sg.slice(px(6, 0), px(6, 0) + 4);
+      document.getElementById("stackBadText").innerHTML =
+        `左半区叠两次 RGBA(${b1.join(",")}) 偏灰<br>右半区压全透明 RGBA(${b2.join(",")}) 被擦掉`;
+      document.getElementById("stackGoodText").innerHTML =
+        `左半区叠两次 RGBA(${g1.join(",")}) 更红更实<br>右半区压全透明 RGBA(${g2.join(",")}) 底下原样保留`;
+    }
+
+    document.querySelectorAll("button[data-scale]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        scale = Number(btn.dataset.scale);
+        render();
+      });
+    });
+    render();
   </script>
 </body>
 </html>
